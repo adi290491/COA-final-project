@@ -5,7 +5,7 @@
  *  Contains various CPU and Pipeline Data structures
  *
  *  Author :
- *  Gaurav Kothari (gkothar1@binghamton.edu)
+ *  
  *  State University of New York, Binghamton
  */
 

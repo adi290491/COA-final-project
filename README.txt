@@ -6,7 +6,6 @@ A simple implementation of 5 Stage APEX Pipeline
 
 Author :
 ---------------------------------------------------------------------------------
-Gaurav Kothari (gkothar1@binghamton.edu)
 State University of New York, Binghamton
 
 
