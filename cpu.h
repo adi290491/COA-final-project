@@ -26,6 +26,7 @@ typedef struct APEX_Instruction
   int rd;		    // Destination Register Address
   int rs1;		    // Source-1 Register Address
   int rs2;		    // Source-2 Register Address
+  int rs3;        // Source-3 Regsiter Address
   int imm;		    // Literal Value
 } APEX_Instruction;
 
@@ -36,10 +37,12 @@ typedef struct CPU_Stage
   char opcode[128];	// Operation Code
   int rs1;		    // Source-1 Register Address
   int rs2;		    // Source-2 Register Address
+  int rs3;        // Source-3 Regsiter Address
   int rd;		    // Destination Register Address
   int imm;		    // Literal Value
   int rs1_value;	// Source-1 Register Value
   int rs2_value;	// Source-2 Register Value
+  int rs3_value;	// Source-3 Register Value
   int buffer;		// Latch to hold some value
   int mem_address;	// Computed Memory Address
   int busy;		    // Flag to indicate, stage is performing some action
@@ -54,6 +57,9 @@ typedef struct APEX_CPU
 
   /* Current program counter */
   int pc;
+
+  /* HALT flag */
+  int haltflag;
 
   /* Integer register file */
   int regs[32];
@@ -81,7 +87,7 @@ APEX_CPU*
 APEX_cpu_init(const char* filename);
 
 int
-APEX_cpu_run(APEX_CPU* cpu);
+APEX_cpu_run(APEX_CPU *cpu, const char* function, const char* totalcycles);
 
 void
 APEX_cpu_stop(APEX_CPU* cpu);

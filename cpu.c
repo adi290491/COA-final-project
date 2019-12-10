@@ -61,6 +61,7 @@ APEX_cpu_init(const char* filename)
              cpu->code_memory[i].rd,
              cpu->code_memory[i].rs1,
              cpu->code_memory[i].rs2,
+             cpu->code_memory[i].rs3,
              cpu->code_memory[i].imm);
     }
   }
@@ -69,6 +70,8 @@ APEX_cpu_init(const char* filename)
   for (int i = 1; i < NUM_STAGES; ++i) {
     cpu->stage[i].busy = 1;
   }
+
+  cpu->haltflag = 0;
 
   return cpu;
 }
@@ -101,13 +104,60 @@ get_code_index(int pc)
 static void
 print_instruction(CPU_Stage* stage)
 {
-  if (strcmp(stage->opcode, "STORE") == 0) {
-    printf(
-      "%s,R%d,R%d,#%d ", stage->opcode, stage->rs1, stage->rs2, stage->imm);
+  if (strcmp(stage->opcode, "STORE") == 0)
+  {
+    printf("%s,R%d,R%d,#%d ", stage->opcode, stage->rs1, stage->rs2, stage->imm);
+  }
+  if (strcmp(stage->opcode, "LOAD") == 0)
+  {
+    printf("%s,R%d,R%d,#%d ", stage->opcode, stage->rd, stage->rs1, stage->imm);
   }
 
-  if (strcmp(stage->opcode, "MOVC") == 0) {
+  if (strcmp(stage->opcode, "STR") == 0)
+  {
+    printf("%s,R%d,R%d,#%d ", stage->opcode, stage->rs1, stage->rs2, stage->rs3);
+  }
+
+  if (strcmp(stage->opcode, "ADDL") == 0 ||
+      strcmp(stage->opcode, "SUBL") == 0)
+  {
+    printf("%s,R%d,R%d,R%d ", stage->opcode, stage->rd, stage->rs1, stage->imm);
+  }
+
+  if (strcmp(stage->opcode, "ADD") == 0 ||
+      strcmp(stage->opcode, "SUB") == 0 ||
+      strcmp(stage->opcode, "AND") == 0 ||
+      strcmp(stage->opcode, "OR") == 0 ||
+      strcmp(stage->opcode, "EX-OR") == 0 ||
+      strcmp(stage->opcode, "MUL") == 0||
+      strcmp(stage->opcode, "LDR") == 0)
+  {
+
+    printf("%s,R%d,R%d,R%d ", stage->opcode, stage->rd, stage->rs1, stage->rs2);
+  }
+
+  if (strcmp(stage->opcode, "MOVC") == 0)
+  {
     printf("%s,R%d,#%d ", stage->opcode, stage->rd, stage->imm);
+  }
+  if (strcmp(stage->opcode, "BZ") == 0 ||
+      strcmp(stage->opcode, "BNZ") == 0)
+  {
+    printf("%s,#%d ", stage->opcode, stage->imm);
+  }
+  if (strcmp(stage->opcode, "JUMP") == 0)
+  {
+    printf("%s,R%d,#%d ", stage->opcode, stage->rs1, stage->imm);
+  }
+
+  if (strcmp(stage->opcode, "HALT") == 0)
+  {
+    printf("%s", stage->opcode);
+  }
+
+  if (strcmp(stage->opcode, "EMPTY") == 0)
+  {
+    printf("%s", stage->opcode);
   }
 }
 
@@ -135,10 +185,9 @@ int
 fetch(APEX_CPU* cpu)
 {
   CPU_Stage* stage = &cpu->stage[F];
-  if (!stage->busy && !stage->stalled) {  
+  if (!stage->busy && !stage->stalled && !cpu->haltflag) {  
     /* Store current PC in fetch latch */
     stage->pc = cpu->pc;
-
     /* Index into code memory using this pc and copy all instruction fields into
      * fetch latch
      */
@@ -147,6 +196,7 @@ fetch(APEX_CPU* cpu)
     stage->rd = current_ins->rd;
     stage->rs1 = current_ins->rs1;
     stage->rs2 = current_ins->rs2;
+    stage->rs3 = current_ins->rs3;
     stage->imm = current_ins->imm;
     stage->rd = current_ins->rd;
 
@@ -174,13 +224,128 @@ decode(APEX_CPU* cpu)
 {
   CPU_Stage* stage = &cpu->stage[DRF];
   if (!stage->busy && !stage->stalled) {
+    if (strcmp(stage->opcode, "HALT") == 0)
+    {
+      cpu->haltflag = 1;
+    }
+   if (strcmp(stage->opcode, "STORE") == 0)
+    {
+      if (cpu->regs_valid[stage->rs1] && cpu->regs_valid[stage->rs2])
+      {
+        stage->stalled = 0;
+        stage->rs1_value = cpu->regs[stage->rs1];
+        stage->rs2_value = cpu->regs[stage->rs2];
+      }
+      else
+      {
+        stage->stalled = 1;
+      }
+    }
 
-    /* Read data from register file for store */
-    if (strcmp(stage->opcode, "STORE") == 0) {
+    /* STR */
+    if (strcmp(stage->opcode, "STR") == 0)
+    {
+      if (cpu->regs_valid[stage->rs1] && cpu->regs_valid[stage->rs2] && cpu->regs_valid[stage->rs3])
+      {
+        stage->stalled = 0;
+        stage->rs1_value = cpu->regs[stage->rs1];
+        stage->rs2_value = cpu->regs[stage->rs2];
+        stage->rs3_value = cpu->regs[stage->rs3];
+      }
+      else
+      {
+        stage->stalled = 1;
+      }
+    }
+
+    /* LOAD */
+    if (strcmp(stage->opcode, "LOAD") == 0)
+    {
+      if (cpu->regs_valid[stage->rs1])
+      {
+        stage->stalled = 0;
+        stage->rs1_value = cpu->regs[stage->rs1];
+        cpu->regs_valid[stage->rd] = 0;   //making register invalid
+      }
+      else
+      {
+        stage->stalled = 1;
+      }
+    }
+
+    /* LDR */
+    if (strcmp(stage->opcode, "LDR") == 0)
+    {
+      if (cpu->regs_valid[stage->rs1] && cpu->regs_valid[stage->rs2])
+      {
+        stage->stalled = 0;
+        stage->rs1_value = cpu->regs[stage->rs1];
+        stage->rs1_value = cpu->regs[stage->rs2];
+        cpu->regs_valid[stage->rd] = 0;
+      }
+      else
+      {
+        stage->stalled = 1;
+      }
     }
 
     /* No Register file read needed for MOVC */
-    if (strcmp(stage->opcode, "MOVC") == 0) {
+    if (strcmp(stage->opcode, "MOVC") == 0)
+    {
+      cpu->regs_valid[stage->rd] = 0;
+    }
+
+    /* ADD, SUB , MUL*/
+    if (strcmp(stage->opcode, "ADD") == 0 ||
+        strcmp(stage->opcode, "SUB") == 0 ||
+        strcmp(stage->opcode, "MUL") == 0 ||
+        strcmp(stage->opcode, "ADDL") == 0 ||
+        strcmp(stage->opcode, "SUBL") == 0 )
+    {
+      //cpu->z_flag_set = 0;
+      if (cpu->regs_valid[stage->rs1] && cpu->regs_valid[stage->rs2])
+      {
+        stage->rs1_value = cpu->regs[stage->rs1];
+        stage->rs2_value = cpu->regs[stage->rs2];
+        cpu->regs_valid[stage->rd] = 0;
+        //cpu->z_flag_set = 0;
+      }
+      else
+      {
+        stage->stalled = 1;
+      }
+    }
+
+    /* AND,OR,EX-OR */
+    if (strcmp(stage->opcode, "AND") == 0 ||
+        strcmp(stage->opcode, "OR") == 0 ||
+        strcmp(stage->opcode, "EX-OR") == 0)
+    {
+      if (cpu->regs_valid[stage->rs1] && cpu->regs_valid[stage->rs2])
+      {
+        stage->stalled = 0;
+        stage->rs1_value = cpu->regs[stage->rs1];
+        stage->rs2_value = cpu->regs[stage->rs2];
+        cpu->regs_valid[stage->rd] = 0;
+      }
+      else
+      {
+        stage->stalled = 1;
+      }
+    }
+
+    /* JUMP */
+    if (strcmp(stage->opcode, "JUMP") == 0)
+    {
+      if (cpu->regs_valid[stage->rs1])
+      {
+        stage->stalled = 0;
+        stage->rs1_value = cpu->regs[stage->rs1];
+      }
+      else
+      {
+        stage->stalled = 1;
+      }
     }
 
     /* Copy data from decode latch to execute latch*/
@@ -286,7 +451,7 @@ writeback(APEX_CPU* cpu)
  * 				 implementation
  */
 int
-APEX_cpu_run(APEX_CPU* cpu)
+APEX_cpu_run(APEX_CPU *cpu, const char* function, const char* totalcycles)
 {
   while (1) {
 
@@ -298,7 +463,7 @@ APEX_cpu_run(APEX_CPU* cpu)
 
     if (ENABLE_DEBUG_MESSAGES) {
       printf("--------------------------------\n");
-      printf("Clock Cycle #: %d\n", cpu->clock);
+      printf("Clock Cycle #: %d\n", cpu->clock+1);
       printf("--------------------------------\n");
     }
 
