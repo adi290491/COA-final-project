@@ -13,6 +13,7 @@ enum
 {
   F,
   DRF,
+  CX,
   EX,
   MEM,
   WB,
@@ -49,6 +50,19 @@ typedef struct CPU_Stage
   int stalled;		// Flag to indicate, stage is stalled
 } CPU_Stage;
 
+struct LSQ_Entry
+{
+  int free;
+  char opcode[128];
+  int pc; // Program counter
+  int rs1;
+  int rs2;
+  int rs3;
+  int rd;
+  int imm;
+  int rs1_value;
+} LSQ_Entry;
+
 /* Model of APEX CPU */
 typedef struct APEX_CPU
 {
@@ -60,6 +74,8 @@ typedef struct APEX_CPU
 
   /* HALT flag */
   int haltflag;
+
+  int LSQ_Instruction_flag;
 
   /* Integer register file */
   int regs[32];
@@ -97,6 +113,9 @@ fetch(APEX_CPU* cpu);
 
 int
 decode(APEX_CPU* cpu);
+
+int
+classify(APEX_CPU* cpu);
 
 int
 execute(APEX_CPU* cpu);

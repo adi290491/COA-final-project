@@ -35,8 +35,8 @@ APEX_cpu_init(const char* filename)
 
   /* Initialize PC, Registers and all pipeline stages */
   cpu->pc = 4000;
-  memset(cpu->regs, 0, sizeof(int) * 32);
-  memset(cpu->regs_valid, 1, sizeof(int) * 32);
+  //memset(cpu->regs, 0, sizeof(int) * 32);
+  //memset(cpu->regs_valid, 1, sizeof(int) * 32);
   memset(cpu->stage, 0, sizeof(CPU_Stage) * NUM_STAGES);
   memset(cpu->data_memory, 0, sizeof(int) * 4000);
 
@@ -359,6 +359,53 @@ decode(APEX_CPU* cpu)
 }
 
 /*
+ *  Stage to fill Data in LSQ,ROB and IQ of APEX Pipeline
+ *
+ *  Note : You are free to edit this function according to your
+ * 				 implementation
+ */
+int classify(APEX_CPU *cpu) {
+  CPU_Stage *stage = &cpu->stage[CX];
+  if (!stage->busy && !stage->stalled) {
+      int LSQ_Instruction_flag = strcmp(stage->opcode, "LOAD") == 0 || strcmp(stage->opcode, "STORE") == 0;
+      int Branch_Instruction_flag = strcmp(stage->opcode, "BNZ") == 0 || strcmp(stage->opcode, "BZ") == 0 ||strcmp(stage->opcode, "JUMP") == 0 ;
+
+    if(cpu->haltflag)
+    {
+
+    }
+
+    else if (LSQ_Instruction_flag)
+    {
+      int lsqIndex = insertInLSQ(cpu);
+    }
+    else if (!LSQ_Instruction_flag)
+    {
+      /* code */
+    }
+    else
+    {
+      stage->stalled = 1;
+    }
+    /* Copy data from decode latch to execute latch*/
+    if (!stage->stalled) {
+      cpu->stage[EX] = cpu->stage[CX];
+    }
+    
+
+
+
+
+
+
+
+
+
+
+  }
+}
+
+/*
  *  Execute Stage of APEX Pipeline
  *
  *  Note : You are free to edit this function according to your
@@ -470,6 +517,7 @@ APEX_cpu_run(APEX_CPU *cpu, const char* function, const char* totalcycles)
     writeback(cpu);
     memory(cpu);
     execute(cpu);
+    classify(cpu);
     decode(cpu);
     fetch(cpu);
     cpu->clock++;
