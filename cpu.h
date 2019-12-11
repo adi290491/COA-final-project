@@ -51,8 +51,8 @@ typedef struct CPU_Stage
 } CPU_Stage;
 
 struct LSQ_Entry
-{
-  int free;
+{ 
+  int memory_address;
   char opcode[128];
   int pc; // Program counter
   int rs1;
@@ -61,7 +61,7 @@ struct LSQ_Entry
   int rd;
   int imm;
   int rs1_value;
-} LSQ_Entry;
+};
 
 /* Model of APEX CPU */
 typedef struct APEX_CPU
@@ -113,9 +113,6 @@ fetch(APEX_CPU* cpu);
 
 int
 decode(APEX_CPU* cpu);
-
-int
-classify(APEX_CPU* cpu);
 
 int
 execute(APEX_CPU* cpu);

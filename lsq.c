@@ -5,4 +5,3 @@
 #include "cpu.h"
 
 #define LSQ_SIZE 6
-

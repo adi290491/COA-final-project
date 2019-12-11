@@ -364,37 +364,7 @@ decode(APEX_CPU* cpu)
  *  Note : You are free to edit this function according to your
  * 				 implementation
  */
-int classify(APEX_CPU *cpu)
-{
-  CPU_Stage *stage = &cpu->stage[CX];
-  if (!stage->busy && !stage->stalled)
-  {
-    int LSQ_Instruction_flag = strcmp(stage->opcode, "LOAD") == 0 || strcmp(stage->opcode, "STORE") == 0;
-    int Branch_Instruction_flag = strcmp(stage->opcode, "BNZ") == 0 || strcmp(stage->opcode, "BZ") == 0 || strcmp(stage->opcode, "JUMP") == 0;
 
-    if (cpu->haltflag)
-    {
-    }
-
-    else if (LSQ_Instruction_flag)
-    {
-      int lsqIndex = insertInLSQ(cpu);
-    }
-    else if (!LSQ_Instruction_flag)
-    {
-      /* code */
-    }
-    else
-    {
-      stage->stalled = 1;
-    }
-    /* Copy data from decode latch to execute latch*/
-    if (!stage->stalled)
-    {
-      cpu->stage[EX] = cpu->stage[CX];
-    }
-  }
-}
 
 /*
  *  Execute Stage of APEX Pipeline
@@ -429,7 +399,7 @@ execute(APEX_CPU* cpu)
  * 				 implementation
  */
 int
-memory(APEX_CPU* cpu)
+memfu(APEX_CPU* cpu)
 {
   CPU_Stage* stage = &cpu->stage[MEM];
   if (!stage->busy && !stage->stalled) {
@@ -439,7 +409,8 @@ memory(APEX_CPU* cpu)
     }
 
     /* MOVC */
-    if (strcmp(stage->opcode, "MOVC") == 0) {
+    if (strcmp(stage->opcode, "LOAD") == 0) {
+      stage->buffer = cpu->data_memory[stage->mem_address];
     }
 
     /* Copy data from decode latch to execute latch*/
@@ -484,31 +455,35 @@ writeback(APEX_CPU* cpu)
  *  Note : You are free to edit this function according to your
  * 				 implementation
  */
-int
-APEX_cpu_run(APEX_CPU *cpu, const char* function, const char* totalcycles)
+int APEX_cpu_run(APEX_CPU *cpu, const char *function, const char *totalcycles)
 {
-  while (1) {
+  while (cpu->clock <= cpu->code_memory_size)
+  {
 
     /* All the instructions committed, so exit */
-    if (cpu->ins_completed == cpu->code_memory_size) {
+    if (cpu->ins_completed == cpu->code_memory_size)
+    {
       printf("(apex) >> Simulation Complete");
       break;
     }
 
-    if (ENABLE_DEBUG_MESSAGES) {
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       printf("--------------------------------\n");
-      printf("Clock Cycle #: %d\n", cpu->clock+1);
+      printf("Clock Cycle #: %d\n", cpu->clock + 1);
       printf("--------------------------------\n");
     }
 
-    writeback(cpu);
-    memory(cpu);
+    memfu(cpu);
+    intfu(cpu);
+    mulfu(cpu);
     execute(cpu);
-    classify(cpu);
+    iqstage(cpu);
+    lsqstage(cpu);
     decode(cpu);
     fetch(cpu);
     cpu->clock++;
   }
-
+  display_reg_file(cpu);
   return 0;
 }
