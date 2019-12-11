@@ -408,13 +408,9 @@ execute(APEX_CPU* cpu)
   CPU_Stage* stage = &cpu->stage[EX];
   if (!stage->busy && !stage->stalled) {
 
-    /* Store */
-    if (strcmp(stage->opcode, "STORE") == 0) {
-    }
-
-    /* MOVC */
-    if (strcmp(stage->opcode, "MOVC") == 0) {
-    }
+    memFUEX(cpu);
+    intFUEX(cpu);
+    mulFUEX(cpu);
 
     /* Copy data from Execute latch to Memory latch*/
     cpu->stage[MEM] = cpu->stage[EX];
