@@ -208,7 +208,23 @@ int fetch(APEX_CPU *cpu)
     cpu->pc += 4;
 
     /* Copy data from fetch latch to decode latch*/
-    cpu->stage[DRF] = cpu->stage[F];
+    if (!cpu->stage[DRF].stalled)
+    {
+      if (strcmp(cpu->stage[DRF].opcode, "HALT") != 0)
+      {
+        cpu->stage[DRF] = cpu->stage[F];
+        cpu->stage[F].stalled = 0;
+      }
+      else
+      {
+        cpu->stage[F].busy = 1;
+      }
+    }
+
+    else
+    {
+      stage->stalled = 1;
+    }
 
     if (ENABLE_DEBUG_MESSAGES)
     {
@@ -440,6 +456,19 @@ int memfu1(APEX_CPU *cpu)
     /* Store */
     if (strcmp(stage->opcode, "STORE") == 0)
     {
+      stage->mem_address = stage->rs2_value + stage->imm;
+    }
+
+    /* STR */
+    if (strcmp(stage->opcode, "STR") == 0)
+    {
+      stage->mem_address = stage->rs2_value + stage->rs3_value;
+    }
+
+    /* LDR */
+    if (strcmp(stage->opcode, "LDR") == 0)
+    {
+      stage->mem_address = stage->rs1_value + stage->rs2_value;
     }
 
     /* MOVC */
@@ -510,7 +539,7 @@ int intfu2(APEX_CPU *cpu)
   CPU_Stage *stage = &cpu->stage[INT2];
   if (!stage->busy && !stage->stalled)
   {
-      cpu->stage[RET] = cpu->stage[INT2];
+    cpu->stage[RET] = cpu->stage[INT2];
     if (ENABLE_DEBUG_MESSAGES)
     {
       print_stage_content("Int FU 2", stage);
