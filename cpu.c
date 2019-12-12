@@ -22,15 +22,17 @@
  * Note : You are free to edit this function according to your
  * 				implementation
  */
-APEX_CPU*
-APEX_cpu_init(const char* filename)
+APEX_CPU *
+APEX_cpu_init(const char *filename)
 {
-  if (!filename) {
+  if (!filename)
+  {
     return NULL;
   }
 
-  APEX_CPU* cpu = malloc(sizeof(*cpu));
-  if (!cpu) {
+  APEX_CPU *cpu = malloc(sizeof(*cpu));
+  if (!cpu)
+  {
     return NULL;
   }
 
@@ -44,19 +46,22 @@ APEX_cpu_init(const char* filename)
   /* Parse input file and create code memory */
   cpu->code_memory = create_code_memory(filename, &cpu->code_memory_size);
 
-  if (!cpu->code_memory) {
+  if (!cpu->code_memory)
+  {
     free(cpu);
     return NULL;
   }
 
-  if (ENABLE_DEBUG_MESSAGES) {
+  if (ENABLE_DEBUG_MESSAGES)
+  {
     fprintf(stderr,
             "APEX_CPU : Initialized APEX CPU, loaded %d instructions\n",
             cpu->code_memory_size);
     fprintf(stderr, "APEX_CPU : Printing Code Memory\n");
     printf("%-9s %-9s %-9s %-9s %-9s\n", "opcode", "rd", "rs1", "rs2", "imm");
 
-    for (int i = 0; i < cpu->code_memory_size; ++i) {
+    for (int i = 0; i < cpu->code_memory_size; ++i)
+    {
       printf("%-9s %-9d %-9d %-9d %-9d\n",
              cpu->code_memory[i].opcode,
              cpu->code_memory[i].rd,
@@ -67,7 +72,8 @@ APEX_cpu_init(const char* filename)
   }
 
   /* Make all stages busy except Fetch stage, initally to start the pipeline */
-  for (int i = 1; i < NUM_STAGES; ++i) {
+  for (int i = 1; i < NUM_STAGES; ++i)
+  {
     cpu->stage[i].busy = 1;
   }
 
@@ -82,8 +88,7 @@ APEX_cpu_init(const char* filename)
  * Note : You are free to edit this function according to your
  * 				implementation
  */
-void
-APEX_cpu_stop(APEX_CPU* cpu)
+void APEX_cpu_stop(APEX_CPU *cpu)
 {
   free(cpu->code_memory);
   free(cpu);
@@ -95,14 +100,13 @@ APEX_cpu_stop(APEX_CPU* cpu)
  * Note : You are not supposed to edit this function
  *
  */
-int
-get_code_index(int pc)
+int get_code_index(int pc)
 {
   return (pc - 4000) / 4;
 }
 
 static void
-print_instruction(CPU_Stage* stage)
+print_instruction(CPU_Stage *stage)
 {
   if (strcmp(stage->opcode, "STORE") == 0)
   {
@@ -129,7 +133,7 @@ print_instruction(CPU_Stage* stage)
       strcmp(stage->opcode, "AND") == 0 ||
       strcmp(stage->opcode, "OR") == 0 ||
       strcmp(stage->opcode, "EX-OR") == 0 ||
-      strcmp(stage->opcode, "MUL") == 0||
+      strcmp(stage->opcode, "MUL") == 0 ||
       strcmp(stage->opcode, "LDR") == 0)
   {
 
@@ -168,7 +172,7 @@ print_instruction(CPU_Stage* stage)
  *
  */
 static void
-print_stage_content(char* name, CPU_Stage* stage)
+print_stage_content(char *name, CPU_Stage *stage)
 {
   printf("%-15s: pc(%d) ", name, stage->pc);
   print_instruction(stage);
@@ -181,17 +185,17 @@ print_stage_content(char* name, CPU_Stage* stage)
  *  Note : You are free to edit this function according to your
  * 				 implementation
  */
-int
-fetch(APEX_CPU* cpu)
+int fetch(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[F];
-  if (!stage->busy && !stage->stalled && !cpu->haltflag) {  
+  CPU_Stage *stage = &cpu->stage[F];
+  if (!stage->busy && !stage->stalled && !cpu->haltflag)
+  {
     /* Store current PC in fetch latch */
     stage->pc = cpu->pc;
     /* Index into code memory using this pc and copy all instruction fields into
      * fetch latch
      */
-    APEX_Instruction* current_ins = &cpu->code_memory[get_code_index(cpu->pc)];
+    APEX_Instruction *current_ins = &cpu->code_memory[get_code_index(cpu->pc)];
     strcpy(stage->opcode, current_ins->opcode);
     stage->rd = current_ins->rd;
     stage->rs1 = current_ins->rs1;
@@ -206,7 +210,8 @@ fetch(APEX_CPU* cpu)
     /* Copy data from fetch latch to decode latch*/
     cpu->stage[DRF] = cpu->stage[F];
 
-    if (ENABLE_DEBUG_MESSAGES) {
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("Fetch", stage);
     }
   }
@@ -219,16 +224,16 @@ fetch(APEX_CPU* cpu)
  *  Note : You are free to edit this function according to your
  * 				 implementation
  */
-int
-decode(APEX_CPU* cpu)
+int decode(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[DRF];
-  if (!stage->busy && !stage->stalled) {
+  CPU_Stage *stage = &cpu->stage[DRF];
+  if (!stage->busy && !stage->stalled)
+  {
     if (strcmp(stage->opcode, "HALT") == 0)
     {
       cpu->haltflag = 1;
     }
-   if (strcmp(stage->opcode, "STORE") == 0)
+    if (strcmp(stage->opcode, "STORE") == 0)
     {
       if (cpu->regs_valid[stage->rs1] && cpu->regs_valid[stage->rs2])
       {
@@ -265,7 +270,7 @@ decode(APEX_CPU* cpu)
       {
         stage->stalled = 0;
         stage->rs1_value = cpu->regs[stage->rs1];
-        cpu->regs_valid[stage->rd] = 0;   //making register invalid
+        cpu->regs_valid[stage->rd] = 0; //making register invalid
       }
       else
       {
@@ -300,7 +305,7 @@ decode(APEX_CPU* cpu)
         strcmp(stage->opcode, "SUB") == 0 ||
         strcmp(stage->opcode, "MUL") == 0 ||
         strcmp(stage->opcode, "ADDL") == 0 ||
-        strcmp(stage->opcode, "SUBL") == 0 )
+        strcmp(stage->opcode, "SUBL") == 0)
     {
       //cpu->z_flag_set = 0;
       if (cpu->regs_valid[stage->rs1] && cpu->regs_valid[stage->rs2])
@@ -361,7 +366,8 @@ decode(APEX_CPU* cpu)
     cpu->stage[IQ] = cpu->stage[DRF];
     cpu->stage[ROB] = cpu->stage[DRF];
 
-    if (ENABLE_DEBUG_MESSAGES) {
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("Decode/RF", stage);
     }
   }
@@ -374,169 +380,203 @@ decode(APEX_CPU* cpu)
  * 				 implementation
  */
 
-int
-lsqstage(APEX_CPU* cpu)
+int lsqstage(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[LSQ];
-  if (!stage->busy && !stage->stalled) {
+  CPU_Stage *stage = &cpu->stage[LSQ];
+  if (!stage->busy && !stage->stalled)
+  {
 
-
-    if (ENABLE_DEBUG_MESSAGES) {
+    cpu->stage[MEM1] = cpu->stage[LSQ];
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("LSQ", stage);
     }
   }
   return 0;
 }
 
-int
-robstage(APEX_CPU* cpu)
+int robstage(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[ROB];
-  if (!stage->busy && !stage->stalled) {
+  CPU_Stage *stage = &cpu->stage[ROB];
+  if (!stage->busy && !stage->stalled)
+  {
 
-
-    if (ENABLE_DEBUG_MESSAGES) {
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("ROB", stage);
     }
   }
   return 0;
 }
 
-int
-iqstage(APEX_CPU* cpu)
+int iqstage(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[IQ];
-  if (!stage->busy && !stage->stalled) {
+  CPU_Stage *stage = &cpu->stage[IQ];
+  if (!stage->busy && !stage->stalled)
+  {
+    if (strcmp(stage->opcode, "MUL") == 0)
+    {
+      cpu->stage[MUL1] = cpu->stage[IQ];
+    }
+    else
+    {
+      cpu->stage[INT1] = cpu->stage[IQ];
+    }
 
-
-    if (ENABLE_DEBUG_MESSAGES) {
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("IQ", stage);
     }
   }
   return 0;
 }
 
-
-int
-memfu1(APEX_CPU* cpu)
+int memfu1(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[MEM1];
-  if (!stage->busy && !stage->stalled) {
+  CPU_Stage *stage = &cpu->stage[MEM1];
+  if (!stage->busy && !stage->stalled)
+  {
 
     /* Store */
-    if (strcmp(stage->opcode, "STORE") == 0) {
+    if (strcmp(stage->opcode, "STORE") == 0)
+    {
     }
 
     /* MOVC */
-    if (strcmp(stage->opcode, "LOAD") == 0) {
+    if (strcmp(stage->opcode, "LOAD") == 0)
+    {
       stage->buffer = cpu->data_memory[stage->mem_address];
     }
 
     /* Copy data from decode latch to execute latch*/
     cpu->stage[MEM2] = cpu->stage[MEM1];
 
-    if (ENABLE_DEBUG_MESSAGES) {
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("Memory FU 1", stage);
     }
   }
   return 0;
 }
 
-int
-memfu2(APEX_CPU* cpu)
+int memfu2(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[MEM2];
-  if (!stage->busy && !stage->stalled) {
+  CPU_Stage *stage = &cpu->stage[MEM2];
+  if (!stage->busy && !stage->stalled)
+  {
 
     /* Copy data from decode latch to execute latch*/
     cpu->stage[MEM3] = cpu->stage[MEM2];
 
-    if (ENABLE_DEBUG_MESSAGES) {
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("Memory FU 2", stage);
     }
   }
   return 0;
 }
 
-
-int
-memfu3(APEX_CPU* cpu)
+int memfu3(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[MEM3];
-  if (!stage->busy && !stage->stalled) {
-
-    if (ENABLE_DEBUG_MESSAGES) {
+  CPU_Stage *stage = &cpu->stage[MEM3];
+  if (!stage->busy && !stage->stalled)
+  {
+    cpu->stage[RET] = cpu->stage[MEM3];
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("Memory FU 3", stage);
     }
   }
   return 0;
 }
 
-int
-intfu1(APEX_CPU* cpu)
+int intfu1(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[INT1];
-  if (!stage->busy && !stage->stalled) {
+  CPU_Stage *stage = &cpu->stage[INT1];
+  if (!stage->busy && !stage->stalled)
+  {
 
-    if (ENABLE_DEBUG_MESSAGES) {
+    cpu->stage[INT2] = cpu->stage[INT1];
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("Int FU 1", stage);
     }
   }
   return 0;
 }
 
-int
-intfu2(APEX_CPU* cpu)
+int intfu2(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[INT2];
-  if (!stage->busy && !stage->stalled) {
-
-    if (ENABLE_DEBUG_MESSAGES) {
+  CPU_Stage *stage = &cpu->stage[INT2];
+  if (!stage->busy && !stage->stalled)
+  {
+      cpu->stage[RET] = cpu->stage[INT2];
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("Int FU 2", stage);
     }
   }
   return 0;
 }
 
-int
-mulfu1(APEX_CPU* cpu)
+int mulfu1(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[MUL1];
-  if (!stage->busy && !stage->stalled) {
+  CPU_Stage *stage = &cpu->stage[MUL1];
+  if (!stage->busy && !stage->stalled)
+  {
+    cpu->stage[MUL2] = cpu->stage[MUL1];
 
-    if (ENABLE_DEBUG_MESSAGES) {
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("MUL FU 1", stage);
     }
   }
   return 0;
 }
 
-int
-mulfu2(APEX_CPU* cpu)
+int mulfu2(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[MUL2];
-  if (!stage->busy && !stage->stalled) {
+  CPU_Stage *stage = &cpu->stage[MUL2];
+  if (!stage->busy && !stage->stalled)
+  {
 
-    if (ENABLE_DEBUG_MESSAGES) {
+    cpu->stage[MUL3] = cpu->stage[MUL2];
+
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("MUL FU 2", stage);
     }
   }
   return 0;
 }
 
-int
-mulfu3(APEX_CPU* cpu)
+int mulfu3(APEX_CPU *cpu)
 {
-  CPU_Stage* stage = &cpu->stage[MUL3];
-  if (!stage->busy && !stage->stalled) {
-
-    if (ENABLE_DEBUG_MESSAGES) {
+  CPU_Stage *stage = &cpu->stage[MUL3];
+  if (!stage->busy && !stage->stalled)
+  {
+    cpu->stage[RET] = cpu->stage[MUL3];
+    if (ENABLE_DEBUG_MESSAGES)
+    {
       print_stage_content("MUL FU 3", stage);
     }
   }
   return 0;
 }
 
+int retire(APEX_CPU *cpu)
+{
+  CPU_Stage *stage = &cpu->stage[RET];
+  if (!stage->busy && !stage->stalled)
+  {
+
+    if (ENABLE_DEBUG_MESSAGES)
+    {
+      print_stage_content("RET", stage);
+    }
+  }
+  return 0;
+}
 /*
  *  APEX CPU simulation loop
  *
@@ -546,9 +586,9 @@ mulfu3(APEX_CPU* cpu)
 int APEX_cpu_run(APEX_CPU *cpu, const char *function, const char *totalcycles)
 {
   while (cpu->clock <= cpu->code_memory_size)
-  {   
+  {
 
-    if(strcmp(function, "display")==0)
+    if (strcmp(function, "display") == 0)
     {
       ENABLE_DEBUG_MESSAGES;
     }
@@ -567,6 +607,7 @@ int APEX_cpu_run(APEX_CPU *cpu, const char *function, const char *totalcycles)
       printf("Clock Cycle #: %d\n", cpu->clock + 1);
       printf("--------------------------------\n");
     }
+    retire(cpu);
     memfu3(cpu);
     memfu2(cpu);
     memfu1(cpu);
@@ -576,14 +617,14 @@ int APEX_cpu_run(APEX_CPU *cpu, const char *function, const char *totalcycles)
     mulfu2(cpu);
     mulfu3(cpu);
     iqstage(cpu);
-    iqstage(cpu);
     robstage(cpu);
     lsqstage(cpu);
     decode(cpu);
     fetch(cpu);
     cpu->clock++;
 
-    if (totalcyclecount == cpu->clock){
+    if (totalcyclecount == cpu->clock)
+    {
       break;
     }
   }

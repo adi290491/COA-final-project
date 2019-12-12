@@ -24,6 +24,7 @@ enum
   MUL1,
   MUL2,
   MUL3,
+  RET,
   NUM_STAGES
 };
 
@@ -146,5 +147,8 @@ memfu2(APEX_CPU* cpu);
 
 int
 memfu3(APEX_CPU* cpu);
+
+int
+retire(APEX_CPU* cpu);
 
 #endif
