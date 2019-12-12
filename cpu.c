@@ -525,6 +525,67 @@ int intfu1(APEX_CPU *cpu)
   if (!stage->busy && !stage->stalled)
   {
 
+    /* Store */
+    if (strcmp(stage->opcode, "STORE") == 0)
+    {
+      stage->mem_address = stage->rs2_value + stage->imm;
+    }
+
+    /* STR */
+    if (strcmp(stage->opcode, "STR") == 0)
+    {
+      stage->mem_address = stage->rs2_value + stage->rs3_value;
+    }
+
+    /* LOAD */
+    if (strcmp(stage->opcode, "LOAD") == 0)
+    {
+      stage->mem_address = stage->rs1_value + stage->imm;
+    }
+
+    /* LDR */
+    if (strcmp(stage->opcode, "LDR") == 0)
+    {
+      stage->mem_address = stage->rs1_value + stage->rs2_value;
+    }
+
+    /* MOVC */
+    if (strcmp(stage->opcode, "MOVC") == 0)
+    {
+      stage->buffer = stage->imm + 0;
+    }
+
+    /* ADD */
+    if (strcmp(stage->opcode, "ADD") == 0)
+    {
+      stage->buffer = stage->rs1_value + stage->rs2_value;
+    }
+
+    /* SUB */
+    if (strcmp(stage->opcode, "SUB") == 0)
+    {
+      stage->buffer = stage->rs1_value - stage->rs2_value;
+      
+    }
+
+    /* AND */
+    if (strcmp(stage->opcode, "AND") == 0)
+    {
+      stage->buffer = stage->rs1_value & stage->rs2_value;
+    }
+
+    /* OR */
+    if (strcmp(stage->opcode, "OR") == 0)
+    {
+      stage->buffer = stage->rs1_value | stage->rs2_value;
+    }
+
+    /* EX-OR */
+    if (strcmp(stage->opcode, "EX-OR") == 0)
+    {
+      stage->buffer = stage->rs1_value ^ stage->rs2_value;
+    }
+
     cpu->stage[INT2] = cpu->stage[INT1];
     if (ENABLE_DEBUG_MESSAGES)
     {
