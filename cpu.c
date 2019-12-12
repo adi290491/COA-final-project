@@ -200,7 +200,6 @@ int fetch(APEX_CPU *cpu)
     stage->rd = current_ins->rd;
     stage->rs1 = current_ins->rs1;
     stage->rs2 = current_ins->rs2;
-    stage->rs3 = current_ins->rs3;
     stage->imm = current_ins->imm;
     stage->rd = current_ins->rd;
 
@@ -213,14 +212,12 @@ int fetch(APEX_CPU *cpu)
       if (strcmp(cpu->stage[DRF].opcode, "HALT") != 0)
       {
         cpu->stage[DRF] = cpu->stage[F];
-        cpu->stage[F].stalled = 0;
       }
       else
       {
         cpu->stage[F].busy = 1;
       }
     }
-
     else
     {
       stage->stalled = 1;
@@ -565,8 +562,7 @@ int intfu1(APEX_CPU *cpu)
     if (strcmp(stage->opcode, "SUB") == 0)
     {
       stage->buffer = stage->rs1_value - stage->rs2_value;
-      
-    }
+        }
 
     /* AND */
     if (strcmp(stage->opcode, "AND") == 0)
@@ -601,6 +597,19 @@ int intfu2(APEX_CPU *cpu)
   if (!stage->busy && !stage->stalled)
   {
     cpu->stage[RET] = cpu->stage[INT2];
+
+    if (strcmp(stage->opcode, "MOVC") == 0 ||
+        strcmp(stage->opcode, "AND") == 0 ||
+        strcmp(stage->opcode, "OR") == 0 ||
+        strcmp(stage->opcode, "EX-OR") == 0 ||
+        strcmp(stage->opcode, "ADD") == 0 ||
+        strcmp(stage->opcode, "ADDL") == 0 ||
+        strcmp(stage->opcode, "SUB") == 0 ||
+        strcmp(stage->opcode, "SUBL") == 0 )
+    {
+      cpu->regs[stage->rd] = stage->buffer;
+      cpu->regs_valid[stage->rd] = 1;
+    }
     if (ENABLE_DEBUG_MESSAGES)
     {
       print_stage_content("Int FU 2", stage);
