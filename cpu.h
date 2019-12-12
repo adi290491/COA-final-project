@@ -13,10 +13,17 @@ enum
 {
   F,
   DRF,
-  CX,
-  EX,
-  MEM,
-  WB,
+  IQ,
+  LSQ,
+  ROB,
+  MEM1,
+  MEM2,
+  MEM3,
+  INT1,
+  INT2,
+  MUL1,
+  MUL2,
+  MUL3,
   NUM_STAGES
 };
 
@@ -81,8 +88,7 @@ typedef struct APEX_CPU
   int regs[32];
   int regs_valid[32];
 
-  /* Array of 5 CPU_stage */
-  CPU_Stage stage[5];
+  CPU_Stage stage[14];
 
   /* Code Memory where instructions are stored */
   APEX_Instruction* code_memory;
@@ -115,12 +121,30 @@ int
 decode(APEX_CPU* cpu);
 
 int
-execute(APEX_CPU* cpu);
+intfu1(APEX_CPU* cpu);
 
 int
-memory(APEX_CPU* cpu);
+intfu2(APEX_CPU* cpu);
 
 int
-writeback(APEX_CPU* cpu);
+mulfu1(APEX_CPU* cpu);
+
+int
+mulfu2(APEX_CPU* cpu);
+
+int
+mulfu3(APEX_CPU* cpu);
+
+int
+mulfu1(APEX_CPU* cpu);
+
+int
+memfu1(APEX_CPU* cpu);
+
+int
+memfu2(APEX_CPU* cpu);
+
+int
+memfu3(APEX_CPU* cpu);
 
 #endif

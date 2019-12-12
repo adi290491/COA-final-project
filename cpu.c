@@ -14,6 +14,7 @@
 
 /* Set this flag to 1 to enable debug messages */
 #define ENABLE_DEBUG_MESSAGES 1
+#define LSQ_SIZE 6
 
 /*
  * This function creates and initializes APEX cpu.
@@ -61,7 +62,6 @@ APEX_cpu_init(const char* filename)
              cpu->code_memory[i].rd,
              cpu->code_memory[i].rs1,
              cpu->code_memory[i].rs2,
-             cpu->code_memory[i].rs3,
              cpu->code_memory[i].imm);
     }
   }
@@ -348,8 +348,18 @@ decode(APEX_CPU* cpu)
       }
     }
 
+    // LSQ Condition
+    if (strcmp(stage->opcode, "LOAD") == 0 ||
+        strcmp(stage->opcode, "STR") == 0 ||
+        strcmp(stage->opcode, "LDR") == 0 ||
+        strcmp(stage->opcode, "STORE") == 0)
+    {
+      cpu->stage[LSQ] = cpu->stage[DRF];
+    }
+
     /* Copy data from decode latch to execute latch*/
-    cpu->stage[EX] = cpu->stage[DRF];
+    cpu->stage[IQ] = cpu->stage[DRF];
+    cpu->stage[ROB] = cpu->stage[DRF];
 
     if (ENABLE_DEBUG_MESSAGES) {
       print_stage_content("Decode/RF", stage);
@@ -357,51 +367,60 @@ decode(APEX_CPU* cpu)
   }
   return 0;
 }
-
 /*
- *  Stage to fill Data in LSQ,ROB and IQ of APEX Pipeline
+ *  Memory FU Stage of APEX Pipeline
  *
  *  Note : You are free to edit this function according to your
  * 				 implementation
  */
 
-
-/*
- *  Execute Stage of APEX Pipeline
- *
- *  Note : You are free to edit this function according to your
- * 				 implementation
- */
 int
-execute(APEX_CPU* cpu)
+lsqstage(APEX_CPU* cpu)
 {
-  CPU_Stage* stage = &cpu->stage[EX];
+  CPU_Stage* stage = &cpu->stage[LSQ];
   if (!stage->busy && !stage->stalled) {
 
-    memFUEX(cpu);
-    intFUEX(cpu);
-    mulFUEX(cpu);
-
-    /* Copy data from Execute latch to Memory latch*/
-    cpu->stage[MEM] = cpu->stage[EX];
 
     if (ENABLE_DEBUG_MESSAGES) {
-      print_stage_content("Execute", stage);
+      print_stage_content("LSQ", stage);
     }
   }
   return 0;
 }
 
-/*
- *  Memory Stage of APEX Pipeline
- *
- *  Note : You are free to edit this function according to your
- * 				 implementation
- */
 int
-memfu(APEX_CPU* cpu)
+robstage(APEX_CPU* cpu)
 {
-  CPU_Stage* stage = &cpu->stage[MEM];
+  CPU_Stage* stage = &cpu->stage[ROB];
+  if (!stage->busy && !stage->stalled) {
+
+
+    if (ENABLE_DEBUG_MESSAGES) {
+      print_stage_content("ROB", stage);
+    }
+  }
+  return 0;
+}
+
+int
+iqstage(APEX_CPU* cpu)
+{
+  CPU_Stage* stage = &cpu->stage[IQ];
+  if (!stage->busy && !stage->stalled) {
+
+
+    if (ENABLE_DEBUG_MESSAGES) {
+      print_stage_content("IQ", stage);
+    }
+  }
+  return 0;
+}
+
+
+int
+memfu1(APEX_CPU* cpu)
+{
+  CPU_Stage* stage = &cpu->stage[MEM1];
   if (!stage->busy && !stage->stalled) {
 
     /* Store */
@@ -414,36 +433,105 @@ memfu(APEX_CPU* cpu)
     }
 
     /* Copy data from decode latch to execute latch*/
-    cpu->stage[WB] = cpu->stage[MEM];
+    cpu->stage[MEM2] = cpu->stage[MEM1];
 
     if (ENABLE_DEBUG_MESSAGES) {
-      print_stage_content("Memory", stage);
+      print_stage_content("Memory FU 1", stage);
     }
   }
   return 0;
 }
 
-/*
- *  Writeback Stage of APEX Pipeline
- *
- *  Note : You are free to edit this function according to your
- * 				 implementation
- */
 int
-writeback(APEX_CPU* cpu)
+memfu2(APEX_CPU* cpu)
 {
-  CPU_Stage* stage = &cpu->stage[WB];
+  CPU_Stage* stage = &cpu->stage[MEM2];
   if (!stage->busy && !stage->stalled) {
 
-    /* Update register file */
-    if (strcmp(stage->opcode, "MOVC") == 0) {
-      cpu->regs[stage->rd] = stage->buffer;
-    }
-
-    cpu->ins_completed++;
+    /* Copy data from decode latch to execute latch*/
+    cpu->stage[MEM3] = cpu->stage[MEM2];
 
     if (ENABLE_DEBUG_MESSAGES) {
-      print_stage_content("Writeback", stage);
+      print_stage_content("Memory FU 2", stage);
+    }
+  }
+  return 0;
+}
+
+
+int
+memfu3(APEX_CPU* cpu)
+{
+  CPU_Stage* stage = &cpu->stage[MEM3];
+  if (!stage->busy && !stage->stalled) {
+
+    if (ENABLE_DEBUG_MESSAGES) {
+      print_stage_content("Memory FU 3", stage);
+    }
+  }
+  return 0;
+}
+
+int
+intfu1(APEX_CPU* cpu)
+{
+  CPU_Stage* stage = &cpu->stage[INT1];
+  if (!stage->busy && !stage->stalled) {
+
+    if (ENABLE_DEBUG_MESSAGES) {
+      print_stage_content("Int FU 1", stage);
+    }
+  }
+  return 0;
+}
+
+int
+intfu2(APEX_CPU* cpu)
+{
+  CPU_Stage* stage = &cpu->stage[INT2];
+  if (!stage->busy && !stage->stalled) {
+
+    if (ENABLE_DEBUG_MESSAGES) {
+      print_stage_content("Int FU 2", stage);
+    }
+  }
+  return 0;
+}
+
+int
+mulfu1(APEX_CPU* cpu)
+{
+  CPU_Stage* stage = &cpu->stage[MUL1];
+  if (!stage->busy && !stage->stalled) {
+
+    if (ENABLE_DEBUG_MESSAGES) {
+      print_stage_content("MUL FU 1", stage);
+    }
+  }
+  return 0;
+}
+
+int
+mulfu2(APEX_CPU* cpu)
+{
+  CPU_Stage* stage = &cpu->stage[MUL2];
+  if (!stage->busy && !stage->stalled) {
+
+    if (ENABLE_DEBUG_MESSAGES) {
+      print_stage_content("MUL FU 2", stage);
+    }
+  }
+  return 0;
+}
+
+int
+mulfu3(APEX_CPU* cpu)
+{
+  CPU_Stage* stage = &cpu->stage[MUL3];
+  if (!stage->busy && !stage->stalled) {
+
+    if (ENABLE_DEBUG_MESSAGES) {
+      print_stage_content("MUL FU 3", stage);
     }
   }
   return 0;
@@ -458,7 +546,13 @@ writeback(APEX_CPU* cpu)
 int APEX_cpu_run(APEX_CPU *cpu, const char *function, const char *totalcycles)
 {
   while (cpu->clock <= cpu->code_memory_size)
-  {
+  {   
+
+    if(strcmp(function, "display")==0)
+    {
+      ENABLE_DEBUG_MESSAGES;
+    }
+    int totalcyclecount = atoi(totalcycles);
 
     /* All the instructions committed, so exit */
     if (cpu->ins_completed == cpu->code_memory_size)
@@ -473,17 +567,26 @@ int APEX_cpu_run(APEX_CPU *cpu, const char *function, const char *totalcycles)
       printf("Clock Cycle #: %d\n", cpu->clock + 1);
       printf("--------------------------------\n");
     }
-
-    memfu(cpu);
-    intfu(cpu);
-    mulfu(cpu);
-    execute(cpu);
+    memfu3(cpu);
+    memfu2(cpu);
+    memfu1(cpu);
+    intfu1(cpu);
+    intfu2(cpu);
+    mulfu1(cpu);
+    mulfu2(cpu);
+    mulfu3(cpu);
     iqstage(cpu);
+    iqstage(cpu);
+    robstage(cpu);
     lsqstage(cpu);
     decode(cpu);
     fetch(cpu);
     cpu->clock++;
+
+    if (totalcyclecount == cpu->clock){
+      break;
+    }
   }
-  display_reg_file(cpu);
+  //display_reg_file(cpu);
   return 0;
 }
