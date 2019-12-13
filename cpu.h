@@ -31,35 +31,35 @@ enum
 /* Format of an APEX instruction  */
 typedef struct APEX_Instruction
 {
-  char opcode[128];	// Operation Code
-  int rd;		    // Destination Register Address
-  int rs1;		    // Source-1 Register Address
-  int rs2;		    // Source-2 Register Address
-  int rs3;        // Source-3 Regsiter Address
-  int imm;		    // Literal Value
+  char opcode[128]; // Operation Code
+  int rd;           // Destination Register Address
+  int rs1;          // Source-1 Register Address
+  int rs2;          // Source-2 Register Address
+  int rs3;          // Source-3 Regsiter Address
+  int imm;          // Literal Value
 } APEX_Instruction;
 
 /* Model of CPU stage latch */
 typedef struct CPU_Stage
 {
-  int pc;		    // Program Counter
-  char opcode[128];	// Operation Code
-  int rs1;		    // Source-1 Register Address
-  int rs2;		    // Source-2 Register Address
-  int rs3;        // Source-3 Regsiter Address
-  int rd;		    // Destination Register Address
-  int imm;		    // Literal Value
-  int rs1_value;	// Source-1 Register Value
-  int rs2_value;	// Source-2 Register Value
-  int rs3_value;	// Source-3 Register Value
-  int buffer;		// Latch to hold some value
-  int mem_address;	// Computed Memory Address
-  int busy;		    // Flag to indicate, stage is performing some action
-  int stalled;		// Flag to indicate, stage is stalled
+  int pc;           // Program Counter
+  char opcode[128]; // Operation Code
+  int rs1;          // Source-1 Register Address
+  int rs2;          // Source-2 Register Address
+  int rs3;          // Source-3 Regsiter Address
+  int rd;           // Destination Register Address
+  int imm;          // Literal Value
+  int rs1_value;    // Source-1 Register Value
+  int rs2_value;    // Source-2 Register Value
+  int rs3_value;    // Source-3 Register Value
+  int buffer;       // Latch to hold some value
+  int mem_address;  // Computed Memory Address
+  int busy;         // Flag to indicate, stage is performing some action
+  int stalled;      // Flag to indicate, stage is stalled
 } CPU_Stage;
 
 struct LSQ_Entry
-{ 
+{
   int memory_address;
   char opcode[128];
   int pc; // Program counter
@@ -69,7 +69,25 @@ struct LSQ_Entry
   int rd;
   int imm;
   int rs1_value;
-};
+} LSQ_Entry;
+typedef struct l1
+{
+  int pc;
+  char opcode[128];
+  int rd;
+  int rs1;
+  int rs2;
+} l1;
+
+typedef struct iq
+{
+  int pc;
+  char opcode[128];
+  int rd;
+  int rs1;
+  int rs2;
+  int get_data;
+} iq;
 
 /* Model of APEX CPU */
 typedef struct APEX_CPU
@@ -89,10 +107,13 @@ typedef struct APEX_CPU
   int regs[32];
   int regs_valid[32];
 
+  int rob[12];
   CPU_Stage stage[14];
 
+  iq IQ[8];
+  l1 LSQ[6];
   /* Code Memory where instructions are stored */
-  APEX_Instruction* code_memory;
+  APEX_Instruction *code_memory;
   int code_memory_size;
 
   /* Data Memory */
@@ -103,52 +124,38 @@ typedef struct APEX_CPU
 
 } APEX_CPU;
 
-APEX_Instruction*
-create_code_memory(const char* filename, int* size);
+APEX_Instruction *
+create_code_memory(const char *filename, int *size);
 
-APEX_CPU*
-APEX_cpu_init(const char* filename);
+APEX_CPU *
+APEX_cpu_init(const char *filename);
 
-int
-APEX_cpu_run(APEX_CPU *cpu, const char* function, const char* totalcycles);
+int APEX_cpu_run(APEX_CPU *cpu, const char *function, const char *totalcycles);
 
-void
-APEX_cpu_stop(APEX_CPU* cpu);
+void APEX_cpu_stop(APEX_CPU *cpu);
 
-int
-fetch(APEX_CPU* cpu);
+int fetch(APEX_CPU *cpu);
 
-int
-decode(APEX_CPU* cpu);
+int decode(APEX_CPU *cpu);
 
-int
-intfu1(APEX_CPU* cpu);
+int intfu1(APEX_CPU *cpu);
 
-int
-intfu2(APEX_CPU* cpu);
+int intfu2(APEX_CPU *cpu);
 
-int
-mulfu1(APEX_CPU* cpu);
+int mulfu1(APEX_CPU *cpu);
 
-int
-mulfu2(APEX_CPU* cpu);
+int mulfu2(APEX_CPU *cpu);
 
-int
-mulfu3(APEX_CPU* cpu);
+int mulfu3(APEX_CPU *cpu);
 
-int
-mulfu1(APEX_CPU* cpu);
+int mulfu1(APEX_CPU *cpu);
 
-int
-memfu1(APEX_CPU* cpu);
+int memfu1(APEX_CPU *cpu);
 
-int
-memfu2(APEX_CPU* cpu);
+int memfu2(APEX_CPU *cpu);
 
-int
-memfu3(APEX_CPU* cpu);
+int memfu3(APEX_CPU *cpu);
 
-int
-retire(APEX_CPU* cpu);
+int retire(APEX_CPU *cpu);
 
 #endif

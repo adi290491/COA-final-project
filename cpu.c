@@ -188,7 +188,7 @@ print_stage_content(char *name, CPU_Stage *stage)
 int fetch(APEX_CPU *cpu)
 {
   CPU_Stage *stage = &cpu->stage[F];
-  if (!stage->busy && !stage->stalled && !cpu->haltflag)
+  if (!stage->busy && !stage->stalled) //&& !cpu->haltflag)
   {
     /* Store current PC in fetch latch */
     stage->pc = cpu->pc;
@@ -256,7 +256,7 @@ int decode(APEX_CPU *cpu)
       }
       else
       {
-        stage->stalled = 1;
+        stage->stalled = 0;
       }
     }
 
@@ -272,7 +272,7 @@ int decode(APEX_CPU *cpu)
       }
       else
       {
-        stage->stalled = 1;
+        stage->stalled = 0;
       }
     }
 
@@ -287,7 +287,7 @@ int decode(APEX_CPU *cpu)
       }
       else
       {
-        stage->stalled = 1;
+        stage->stalled = 0;
       }
     }
 
@@ -303,7 +303,7 @@ int decode(APEX_CPU *cpu)
       }
       else
       {
-        stage->stalled = 1;
+        stage->stalled = 0;
       }
     }
 
@@ -330,7 +330,7 @@ int decode(APEX_CPU *cpu)
       }
       else
       {
-        stage->stalled = 1;
+        stage->stalled = 0;
       }
     }
 
@@ -348,7 +348,7 @@ int decode(APEX_CPU *cpu)
       }
       else
       {
-        stage->stalled = 1;
+        stage->stalled = 0;
       }
     }
 
@@ -362,7 +362,7 @@ int decode(APEX_CPU *cpu)
       }
       else
       {
-        stage->stalled = 1;
+        stage->stalled = 0;
       }
     }
 
@@ -373,6 +373,7 @@ int decode(APEX_CPU *cpu)
         strcmp(stage->opcode, "STORE") == 0)
     {
       cpu->stage[LSQ] = cpu->stage[DRF];
+      cpu->stage[IQ] = cpu->stage[DRF];
     }
 
     /* Copy data from decode latch to execute latch*/
@@ -392,6 +393,79 @@ int decode(APEX_CPU *cpu)
  *  Note : You are free to edit this function according to your
  * 				 implementation
  */
+int fetch_IQ(APEX_CPU *cpu)
+{
+  for (int i = 0; i <= 7; i++)
+  {
+    if (cpu->IQ[i].get_data == 0)
+    {
+      return i;
+    }
+  }
+}
+
+int get_I(APEX_CPU *cpu)
+{
+  CPU_Stage *stage = &cpu->stage[IQ];
+
+  int getIQ = fetch_IQ(cpu);
+  if (IQ_Squash(cpu, stage->pc) == 1)
+  {
+
+    cpu->IQ[getIQ].pc = stage->pc;
+       // printf("\n \n%d -------- %d",cpu->IQ[getIQ].pc, stage->pc);
+
+    strcpy(cpu->IQ[getIQ].opcode, stage->opcode);
+    cpu->IQ[getIQ].rd = stage->rd;
+    cpu->IQ[getIQ].rs1 = stage->rs1;
+    cpu->IQ[getIQ].rs2 = stage->rs2;
+    cpu->IQ[getIQ].get_data = 1;
+    
+  }
+  
+  
+}
+
+int printI(APEX_CPU *cpu)
+{
+  for (int i = 0; i < 8; i++)
+  {
+    if (cpu->IQ[i].get_data == 1)
+    {
+      printf("\n Data in IQ %s R%d R%d R%d \n", cpu->IQ[i].opcode, cpu->IQ[i].rd, cpu->IQ[i].rs1, cpu->IQ[i].rs2);
+    }
+  }
+}
+int IQ_Squash(APEX_CPU *cpu, int pc)
+{
+  // int i = 0;
+
+  for (int i = 0; i < 8; i++)
+  {
+    if (cpu->IQ[i].get_data == 1)
+    {
+
+      if (cpu->IQ[i].pc == pc)
+      {
+        //cpu->stage[IQ].stalled = 1;
+        
+        return 0;
+      }
+    }
+    // i += 1;
+  }
+  return 1;
+}
+ 
+ int get_int(APEX_CPU *cpu, int i)
+ {
+   CPU_Stage *stage = &cpu->stage[INT1];
+   stage->pc = cpu->IQ[i].pc;
+   stage->rd = cpu->IQ[i].rd;
+   stage->rs1 = cpu->IQ[i].rs1;
+   stage->rs2 = cpu->IQ[i].rs2;
+   cpu->IQ[i].get_data = 0;
+ }
 
 int lsqstage(APEX_CPU *cpu)
 {
@@ -425,22 +499,32 @@ int robstage(APEX_CPU *cpu)
 int iqstage(APEX_CPU *cpu)
 {
   CPU_Stage *stage = &cpu->stage[IQ];
-  if (!stage->busy && !stage->stalled)
+  if(!stage->busy && !stage->stalled)
   {
-    if (strcmp(stage->opcode, "MUL") == 0)
+    get_I(cpu);
+    for(int i = 0 ; i<8; i++)
+    {
+    if(cpu->IQ[i].get_data == 1)
+    {
+      cpu->stage[IQ].stalled = 1;
+    }
+    }
+    /*if (strcmp(stage->opcode, "MUL") == 0)
     {
       cpu->stage[MUL1] = cpu->stage[IQ];
-    }
-    else
-    {
-      cpu->stage[INT1] = cpu->stage[IQ];
-    }
+    }*/
+    //else
+    //{
+    cpu->stage[INT1] = cpu->stage[IQ];
+    ///}
 
     if (ENABLE_DEBUG_MESSAGES)
     {
-      print_stage_content("IQ", stage);
+      printI(cpu);
+      // print_stage_content("IQ", stage);
     }
   }
+  
   return 0;
 }
 
@@ -518,9 +602,10 @@ int memfu3(APEX_CPU *cpu)
 
 int intfu1(APEX_CPU *cpu)
 {
-  CPU_Stage *stage = &cpu->stage[INT1];
-  if (!stage->busy && !stage->stalled)
-  {
+  
+  CPU_Stage *stage ;
+  //if (!stage->busy && !stage->stalled)
+  //{
 
     /* Store */
     if (strcmp(stage->opcode, "STORE") == 0)
@@ -562,7 +647,7 @@ int intfu1(APEX_CPU *cpu)
     if (strcmp(stage->opcode, "SUB") == 0)
     {
       stage->buffer = stage->rs1_value - stage->rs2_value;
-        }
+    }
 
     /* AND */
     if (strcmp(stage->opcode, "AND") == 0)
@@ -583,11 +668,12 @@ int intfu1(APEX_CPU *cpu)
     }
 
     cpu->stage[INT2] = cpu->stage[INT1];
+    //printf("at Int1-----");
     if (ENABLE_DEBUG_MESSAGES)
     {
       print_stage_content("Int FU 1", stage);
     }
-  }
+  //}
   return 0;
 }
 
@@ -605,7 +691,7 @@ int intfu2(APEX_CPU *cpu)
         strcmp(stage->opcode, "ADD") == 0 ||
         strcmp(stage->opcode, "ADDL") == 0 ||
         strcmp(stage->opcode, "SUB") == 0 ||
-        strcmp(stage->opcode, "SUBL") == 0 )
+        strcmp(stage->opcode, "SUBL") == 0)
     {
       cpu->regs[stage->rd] = stage->buffer;
       cpu->regs_valid[stage->rd] = 1;
@@ -710,14 +796,19 @@ int APEX_cpu_run(APEX_CPU *cpu, const char *function, const char *totalcycles)
     memfu3(cpu);
     memfu2(cpu);
     memfu1(cpu);
-    intfu1(cpu);
-    intfu2(cpu);
-    mulfu1(cpu);
-    mulfu2(cpu);
+
     mulfu3(cpu);
-    iqstage(cpu);
+    mulfu2(cpu);
+    mulfu1(cpu);
+    intfu2(cpu);
+
+    intfu1(cpu);
+
     robstage(cpu);
-    lsqstage(cpu);
+
+    iqstage(cpu);
+        lsqstage(cpu);
+
     decode(cpu);
     fetch(cpu);
     cpu->clock++;
