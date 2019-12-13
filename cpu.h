@@ -78,6 +78,8 @@ typedef struct l1
   int rd;
   int rs1;
   int rs2;
+  int rs3;
+  int imm;
 } l1;
 
 typedef struct iq
@@ -87,6 +89,8 @@ typedef struct iq
   int rd;
   int rs1;
   int rs2;
+  int rs3;
+  int imm;
   int get_data;
 } iq;
 
@@ -97,6 +101,7 @@ typedef struct rob
   int rd;
   int rs1;
   int rs2;
+  int imm;
   int get_data;
 }rob;
 
@@ -107,6 +112,8 @@ typedef struct lsq
   int rd;
   int rs1;
   int rs2;
+  int rs3;
+  int imm;
   int get_data;
 } lsq;
 

@@ -58,15 +58,16 @@ APEX_cpu_init(const char *filename)
             "APEX_CPU : Initialized APEX CPU, loaded %d instructions\n",
             cpu->code_memory_size);
     fprintf(stderr, "APEX_CPU : Printing Code Memory\n");
-    printf("%-9s %-9s %-9s %-9s %-9s\n", "opcode", "rd", "rs1", "rs2", "imm");
+    printf("%-9s %-9s %-9s %-9s %-9s\n", "opcode", "rd", "rs1", "rs2", "rs3", "imm");
 
     for (int i = 0; i < cpu->code_memory_size; ++i)
     {
-      printf("%-9s %-9d %-9d %-9d %-9d\n",
+      printf("%-9s %-9d %-9d %-9d %-9d %-9d \n",
              cpu->code_memory[i].opcode,
              cpu->code_memory[i].rd,
              cpu->code_memory[i].rs1,
              cpu->code_memory[i].rs2,
+             cpu->code_memory[i].rs3,
              cpu->code_memory[i].imm);
     }
   }
@@ -76,8 +77,6 @@ APEX_cpu_init(const char *filename)
   {
     cpu->stage[i].busy = 1;
   }
-
-  cpu->haltflag = 0;
 
   return cpu;
 }
@@ -207,21 +206,19 @@ int fetch(APEX_CPU *cpu)
     cpu->pc += 4;
 
     /* Copy data from fetch latch to decode latch*/
-    if (!cpu->stage[DRF].stalled)
-    {
-      if (strcmp(cpu->stage[DRF].opcode, "HALT") != 0)
+    //if (!cpu->stage[DRF].stalled)
+    //{
+    /*if (strcmp(cpu->stage[DRF].opcode, "HALT") != 0)
       {
         cpu->stage[DRF] = cpu->stage[F];
-      }
-      else
-      {
-        cpu->stage[F].busy = 1;
-      }
-    }
-    else
-    {
-      stage->stalled = 1;
-    }
+      }*/
+
+    //}
+    //else
+    ///{
+    //  stage->stalled = 1;
+    //}
+    cpu->stage[DRF] = cpu->stage[F];
 
     if (ENABLE_DEBUG_MESSAGES)
     {
@@ -244,7 +241,9 @@ int decode(APEX_CPU *cpu)
   {
     if (strcmp(stage->opcode, "HALT") == 0)
     {
-      cpu->haltflag = 1;
+      cpu->stage[ROB] = cpu->stage[DRF];
+      printf("AT DECODE HALT----");
+      //cpu->ins_completed++;
     }
     if (strcmp(stage->opcode, "STORE") == 0)
     {
@@ -419,7 +418,7 @@ int fetch_ROB(APEX_CPU *cpu)
 {
   for (int i = 0; i <= 12; i++)
   {
-    if (cpu->IQ[i].get_data == 0)
+    if (cpu->ROB[i].get_data == 0)
     {
       return i;
     }
@@ -457,6 +456,7 @@ int get_LSQ(APEX_CPU *cpu)
     // printf("\n \n%d -------- %d",cpu->IQ[getIQ].pc, stage->pc);
 
     strcpy(cpu->LSQ[getLSQ].opcode, stage->opcode);
+
     cpu->IQ[getLSQ].rd = stage->rd;
     cpu->IQ[getLSQ].rs1 = stage->rs1;
     cpu->IQ[getLSQ].rs2 = stage->rs2;
@@ -470,15 +470,22 @@ int get_ROB(APEX_CPU *cpu)
 
   int getROB = fetch_ROB(cpu);
 
-    cpu->ROB[getROB].pc = stage->pc;
-    // printf("\n \n%d -------- %d",cpu->IQ[getIQ].pc, stage->pc);
+  cpu->ROB[getROB].pc = stage->pc;
+  // printf("\n \n%d -------- %d",cpu->IQ[getIQ].pc, stage->pc);
 
-    strcpy(cpu->ROB[getROB].opcode, stage->opcode);
-    cpu->ROB[getROB].rd = stage->rd;
-    cpu->ROB[getROB].rs1 = stage->rs1;
-    cpu->ROB[getROB].rs2 = stage->rs2;
-    cpu->ROB[getROB].get_data = 1;
-    cpu->ins_completed++;
+  strcpy(cpu->ROB[getROB].opcode, stage->opcode);
+  if (strcmp(cpu->ROB[getROB].opcode, "HALT") == 0)
+  {
+
+    cpu->stage[F].stalled = 1;
+    cpu->stage[DRF].stalled = 1;
+    cpu->haltflag = 0;
+  }
+  cpu->ROB[getROB].rd = stage->rd;
+  cpu->ROB[getROB].rs1 = stage->rs1;
+  cpu->ROB[getROB].rs2 = stage->rs2;
+  cpu->ROB[getROB].get_data = 1;
+  // cpu->ins_completed++;
 }
 
 int printI(APEX_CPU *cpu)
@@ -487,7 +494,40 @@ int printI(APEX_CPU *cpu)
   {
     if (cpu->IQ[i].get_data == 1)
     {
-      printf("\n Data in IQ %s R%d R%d R%d \n", cpu->IQ[i].opcode, cpu->IQ[i].rd, cpu->IQ[i].rs1, cpu->IQ[i].rs2);
+      if (strcmp(cpu->IQ[i].opcode, "ADD") == 0 || strcmp(cpu->IQ[i].opcode, "SUB") == 0 || strcmp(cpu->IQ[i].opcode, "AND") == 0 || strcmp(cpu->IQ[i].opcode, "OR") == 0 || strcmp(cpu->IQ[i].opcode, "XOR") == 0 || strcmp(cpu->IQ[i].opcode, "MUL") == 0)
+      {
+        printf("\n IQ %s R%d R%d R%d \n", cpu->IQ[i].opcode, cpu->IQ[i].rd, cpu->IQ[i].rs1, cpu->IQ[i].rs2);
+      }
+
+      if (strcmp(cpu->IQ[i].opcode, "ADDL") == 0 || strcmp(cpu->IQ[i].opcode, "SUBL") == 0)
+      {
+        printf("\n IQ %s R%d R%d \n", cpu->IQ[i].opcode, cpu->IQ[i].rd, cpu->IQ[i].rs1, cpu->IQ[i].imm);
+      }
+
+      if (strcmp(cpu->IQ[i].opcode, "LDR") == 0 || strcmp(cpu->IQ[i].opcode, "STR") == 0)
+      {
+        printf("\n IQ %s R%d R%d R%d \n", cpu->IQ[i].opcode, cpu->IQ[i].rd, cpu->IQ[i].rs1, cpu->IQ[i].rs2);
+      }
+
+      if (strcmp(cpu->IQ[i].opcode, "LOAD") == 0 || strcmp(cpu->IQ[i].opcode, "STORE") == 0)
+      {
+        printf("\n IQ %s R%d R%d R%d \n", cpu->IQ[i].opcode, cpu->IQ[i].rs1, cpu->IQ[i].rs2, cpu->IQ[i].rs3);
+      }
+
+      if (strcmp(cpu->IQ[i].opcode, "BZ") == 0 || strcmp(cpu->IQ[i].opcode, "BNZ") == 0)
+      {
+        printf("\n IQ %s  \n", cpu->IQ[i].opcode, cpu->IQ[i].imm);
+      }
+
+      if (strcmp(cpu->IQ[i].opcode, "JUMP") == 0)
+      {
+        printf("\n IQ %s R%d \n", cpu->IQ[i].opcode, cpu->IQ[i].rs1, cpu->IQ[i].imm);
+      }
+
+      if (strcmp(cpu->IQ[i].opcode, "MOVC") == 0)
+      {
+        printf("\n IQ %s R%d \n", cpu->IQ[i].opcode, cpu->IQ[i].rd, cpu->IQ[i].imm);
+      }
     }
   }
 }
@@ -496,9 +536,43 @@ int printROB(APEX_CPU *cpu)
 {
   for (int i = 0; i < 12; i++)
   {
+
     if (cpu->ROB[i].get_data == 1)
     {
-      printf("\n Data in ROB %s R%d R%d R%d \n", cpu->ROB[i].opcode, cpu->ROB[i].rd, cpu->ROB[i].rs1, cpu->ROB[i].rs2);
+      if (strcmp(cpu->ROB[i].opcode, "ADD") == 0 || strcmp(cpu->ROB[i].opcode, "SUB") == 0 || strcmp(cpu->ROB[i].opcode, "AND") == 0 || strcmp(cpu->ROB[i].opcode, "OR") == 0 || strcmp(cpu->ROB[i].opcode, "XOR") == 0 || strcmp(cpu->ROB[i].opcode, "MUL") == 0)
+      {
+        printf("\n ROB  %s R%d R%d R%d \n", cpu->ROB[i].opcode, cpu->ROB[i].rd, cpu->ROB[i].rs1, cpu->ROB[i].rs2);
+      }
+
+      if (strcmp(cpu->IQ[i].opcode, "ADDL") == 0 || strcmp(cpu->IQ[i].opcode, "SUBL") == 0)
+      {
+        printf("\n ROB %s R%d R%d \n", cpu->ROB[i].opcode, cpu->ROB[i].rd, cpu->ROB[i].rs1, cpu->ROB[i].imm);
+      }
+
+      if (strcmp(cpu->IQ[i].opcode, "LDR") == 0 || strcmp(cpu->IQ[i].opcode, "STR") == 0)
+      {
+        printf("\n ROB %s R%d R%d R%d \n", cpu->ROB[i].opcode, cpu->ROB[i].rd, cpu->ROB[i].rs1, cpu->ROB[i].rs2);
+      }
+
+      if (strcmp(cpu->IQ[i].opcode, "LOAD") == 0 || strcmp(cpu->IQ[i].opcode, "STORE") == 0)
+      {
+        printf("\n ROB %s R%d R%d R%d \n", cpu->ROB[i].opcode, cpu->ROB[i].rs1, cpu->ROB[i].rs2, cpu->IQ[i].rs3);
+      }
+
+      if (strcmp(cpu->IQ[i].opcode, "BZ") == 0 || strcmp(cpu->IQ[i].opcode, "BNZ") == 0)
+      {
+        printf("\n ROB %s  \n", cpu->ROB[i].opcode, cpu->ROB[i].imm);
+      }
+
+      if (strcmp(cpu->IQ[i].opcode, "JUMP") == 0)
+      {
+        printf("\n ROB %s R%d \n", cpu->ROB[i].opcode, cpu->ROB[i].rs1, cpu->ROB[i].imm);
+      }
+
+      if (strcmp(cpu->IQ[i].opcode, "MOVC") == 0)
+      {
+        printf("\n ROB %s R%d \n", cpu->ROB[i].opcode, cpu->ROB[i].rd, cpu->ROB[i].imm);
+      }
     }
   }
 }
@@ -507,9 +581,28 @@ int printLSQ(APEX_CPU *cpu)
 {
   for (int i = 0; i < 6; i++)
   {
-    if (cpu->LSQ[i].get_data == 1)
+
+    if (cpu->LSQ[i].get_data == 0)
     {
-      printf("\n Data in LSQ %s R%d R%d R%d \n", cpu->LSQ[i].opcode, cpu->LSQ[i].rd, cpu->LSQ[i].rs1, cpu->LSQ[i].rs2);
+      if (strcmp(cpu->LSQ[i].opcode, "LDR") == 0)
+      {
+        printf("\n LSQ %s R%d R%d R%d \n", cpu->LSQ[i].opcode, cpu->LSQ[i].rd, cpu->LSQ[i].rs1, cpu->LSQ[i].rs2);
+      }
+
+      if (strcmp(cpu->LSQ[i].opcode, "STR") == 0)
+      {
+        printf("\n LSQ %s R%d R%d R%d \n", cpu->LSQ[i].opcode, cpu->LSQ[i].rs1, cpu->LSQ[i].rs2, cpu->LSQ[i].rs3);
+      }
+
+      if (strcmp(cpu->LSQ[i].opcode, "LOAD") == 0)
+      {
+        printf("\n LSQ %s R%d R%d R%d \n", cpu->LSQ[i].opcode, cpu->LSQ[i].rd, cpu->LSQ[i].rs1, cpu->LSQ[i].imm);
+      }
+
+      if (strcmp(cpu->LSQ[i].opcode, "STORE") == 0)
+      {
+        printf("\n LSQ %s R%d R%d R%d \n", cpu->LSQ[i].opcode, cpu->LSQ[i].rs1, cpu->LSQ[i].rs2, cpu->LSQ[i].imm);
+      }
     }
   }
 }
@@ -587,6 +680,7 @@ int robstage(APEX_CPU *cpu)
   CPU_Stage *stage = &cpu->stage[ROB];
   if (!stage->busy && !stage->stalled)
   {
+
     get_ROB(cpu);
     if (ENABLE_DEBUG_MESSAGES)
     {
@@ -856,6 +950,25 @@ int retire(APEX_CPU *cpu)
   }
   return 0;
 }
+
+int display(APEX_CPU *cpu)
+{
+  printf("\n");
+    printf("==================REGISTER VALUE==============");
+    for (int i = 0; i < 16; i++)
+    {
+      printf("\n");
+      printf(" | Register[%d] | Value=%d | status=%s |", i, cpu->regs[i], (cpu->regs_valid[i]) ? "Valid" : "Invalid");
+    }
+
+    printf("\n");
+    printf("==================DATA MEMORY ==============");
+    printf("\n");
+    for (int i = 0; i < 99; i++)
+    {
+      printf(" | MEM[%d] | Value=%d | \n", i, cpu->data_memory[i]);
+    }
+}
 /*
  *  APEX CPU simulation loop
  *
@@ -911,7 +1024,13 @@ int APEX_cpu_run(APEX_CPU *cpu, const char *function, const char *totalcycles)
     {
       break;
     }
+
+    if (cpu->haltflag == 1)
+    {
+      break;
+    }
   }
+  display(cpu);
   //display_reg_file(cpu);
   return 0;
 }
