@@ -70,6 +70,7 @@ struct LSQ_Entry
   int imm;
   int rs1_value;
 } LSQ_Entry;
+
 typedef struct l1
 {
   int pc;
@@ -89,6 +90,26 @@ typedef struct iq
   int get_data;
 } iq;
 
+typedef struct rob
+{
+  int pc;
+  char opcode[128];
+  int rd;
+  int rs1;
+  int rs2;
+  int get_data;
+}rob;
+
+typedef struct lsq
+{
+  int pc;
+  char opcode[128];
+  int rd;
+  int rs1;
+  int rs2;
+  int get_data;
+} lsq;
+
 /* Model of APEX CPU */
 typedef struct APEX_CPU
 {
@@ -107,11 +128,12 @@ typedef struct APEX_CPU
   int regs[32];
   int regs_valid[32];
 
-  int rob[12];
+  //int rob[12];
   CPU_Stage stage[14];
 
   iq IQ[8];
-  l1 LSQ[6];
+  lsq LSQ[6];
+  rob ROB[12];
   /* Code Memory where instructions are stored */
   APEX_Instruction *code_memory;
   int code_memory_size;

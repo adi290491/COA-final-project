@@ -404,6 +404,28 @@ int fetch_IQ(APEX_CPU *cpu)
   }
 }
 
+int fetch_LSQ(APEX_CPU *cpu)
+{
+  for (int i = 0; i <= 5; i++)
+  {
+    if (cpu->LSQ[i].get_data == 0)
+    {
+      return i;
+    }
+  }
+}
+
+int fetch_ROB(APEX_CPU *cpu)
+{
+  for (int i = 0; i <= 12; i++)
+  {
+    if (cpu->IQ[i].get_data == 0)
+    {
+      return i;
+    }
+  }
+}
+
 int get_I(APEX_CPU *cpu)
 {
   CPU_Stage *stage = &cpu->stage[IQ];
@@ -413,17 +435,50 @@ int get_I(APEX_CPU *cpu)
   {
 
     cpu->IQ[getIQ].pc = stage->pc;
-       // printf("\n \n%d -------- %d",cpu->IQ[getIQ].pc, stage->pc);
+    // printf("\n \n%d -------- %d",cpu->IQ[getIQ].pc, stage->pc);
 
     strcpy(cpu->IQ[getIQ].opcode, stage->opcode);
     cpu->IQ[getIQ].rd = stage->rd;
     cpu->IQ[getIQ].rs1 = stage->rs1;
     cpu->IQ[getIQ].rs2 = stage->rs2;
     cpu->IQ[getIQ].get_data = 1;
-    
   }
-  
-  
+}
+
+int get_LSQ(APEX_CPU *cpu)
+{
+  CPU_Stage *stage = &cpu->stage[LSQ];
+
+  int getLSQ = fetch_LSQ(cpu);
+  if (LSQ_Squash(cpu, stage->pc) == 1)
+  {
+
+    cpu->LSQ[getLSQ].pc = stage->pc;
+    // printf("\n \n%d -------- %d",cpu->IQ[getIQ].pc, stage->pc);
+
+    strcpy(cpu->LSQ[getLSQ].opcode, stage->opcode);
+    cpu->IQ[getLSQ].rd = stage->rd;
+    cpu->IQ[getLSQ].rs1 = stage->rs1;
+    cpu->IQ[getLSQ].rs2 = stage->rs2;
+    cpu->IQ[getLSQ].get_data = 1;
+  }
+}
+
+int get_ROB(APEX_CPU *cpu)
+{
+  CPU_Stage *stage = &cpu->stage[ROB];
+
+  int getROB = fetch_ROB(cpu);
+
+    cpu->ROB[getROB].pc = stage->pc;
+    // printf("\n \n%d -------- %d",cpu->IQ[getIQ].pc, stage->pc);
+
+    strcpy(cpu->ROB[getROB].opcode, stage->opcode);
+    cpu->ROB[getROB].rd = stage->rd;
+    cpu->ROB[getROB].rs1 = stage->rs1;
+    cpu->ROB[getROB].rs2 = stage->rs2;
+    cpu->ROB[getROB].get_data = 1;
+    cpu->ins_completed++;
 }
 
 int printI(APEX_CPU *cpu)
@@ -436,6 +491,29 @@ int printI(APEX_CPU *cpu)
     }
   }
 }
+
+int printROB(APEX_CPU *cpu)
+{
+  for (int i = 0; i < 12; i++)
+  {
+    if (cpu->ROB[i].get_data == 1)
+    {
+      printf("\n Data in ROB %s R%d R%d R%d \n", cpu->ROB[i].opcode, cpu->ROB[i].rd, cpu->ROB[i].rs1, cpu->ROB[i].rs2);
+    }
+  }
+}
+
+int printLSQ(APEX_CPU *cpu)
+{
+  for (int i = 0; i < 6; i++)
+  {
+    if (cpu->LSQ[i].get_data == 1)
+    {
+      printf("\n Data in LSQ %s R%d R%d R%d \n", cpu->LSQ[i].opcode, cpu->LSQ[i].rd, cpu->LSQ[i].rs1, cpu->LSQ[i].rs2);
+    }
+  }
+}
+
 int IQ_Squash(APEX_CPU *cpu, int pc)
 {
   // int i = 0;
@@ -448,7 +526,7 @@ int IQ_Squash(APEX_CPU *cpu, int pc)
       if (cpu->IQ[i].pc == pc)
       {
         //cpu->stage[IQ].stalled = 1;
-        
+
         return 0;
       }
     }
@@ -456,27 +534,49 @@ int IQ_Squash(APEX_CPU *cpu, int pc)
   }
   return 1;
 }
- 
- int get_int(APEX_CPU *cpu, int i)
- {
-   CPU_Stage *stage = &cpu->stage[INT1];
-   stage->pc = cpu->IQ[i].pc;
-   stage->rd = cpu->IQ[i].rd;
-   stage->rs1 = cpu->IQ[i].rs1;
-   stage->rs2 = cpu->IQ[i].rs2;
-   cpu->IQ[i].get_data = 0;
- }
+
+int LSQ_Squash(APEX_CPU *cpu, int pc)
+{
+  // int i = 0;
+
+  for (int i = 0; i < 6; i++)
+  {
+    if (cpu->IQ[i].get_data == 1)
+    {
+
+      if (cpu->IQ[i].pc == pc)
+      {
+        //cpu->stage[IQ].stalled = 1;
+
+        return 0;
+      }
+    }
+    // i += 1;
+  }
+  return 1;
+}
+
+int get_int(APEX_CPU *cpu, int i)
+{
+  CPU_Stage *stage = &cpu->stage[INT1];
+  stage->pc = cpu->IQ[i].pc;
+  stage->rd = cpu->IQ[i].rd;
+  stage->rs1 = cpu->IQ[i].rs1;
+  stage->rs2 = cpu->IQ[i].rs2;
+  cpu->IQ[i].get_data = 0;
+}
 
 int lsqstage(APEX_CPU *cpu)
 {
   CPU_Stage *stage = &cpu->stage[LSQ];
   if (!stage->busy && !stage->stalled)
   {
-
+    get_LSQ(cpu);
     cpu->stage[MEM1] = cpu->stage[LSQ];
     if (ENABLE_DEBUG_MESSAGES)
     {
-      print_stage_content("LSQ", stage);
+      printLSQ(cpu);
+      printf("LSQ Stage");
     }
   }
   return 0;
@@ -487,10 +587,10 @@ int robstage(APEX_CPU *cpu)
   CPU_Stage *stage = &cpu->stage[ROB];
   if (!stage->busy && !stage->stalled)
   {
-
+    get_ROB(cpu);
     if (ENABLE_DEBUG_MESSAGES)
     {
-      print_stage_content("ROB", stage);
+      printROB(cpu);
     }
   }
   return 0;
@@ -499,24 +599,18 @@ int robstage(APEX_CPU *cpu)
 int iqstage(APEX_CPU *cpu)
 {
   CPU_Stage *stage = &cpu->stage[IQ];
-  if(!stage->busy && !stage->stalled)
+  if (!stage->busy && !stage->stalled)
   {
     get_I(cpu);
-    for(int i = 0 ; i<8; i++)
-    {
-    if(cpu->IQ[i].get_data == 1)
-    {
-      cpu->stage[IQ].stalled = 1;
-    }
-    }
-    /*if (strcmp(stage->opcode, "MUL") == 0)
+
+    if (strcmp(stage->opcode, "MUL") == 0)
     {
       cpu->stage[MUL1] = cpu->stage[IQ];
-    }*/
-    //else
-    //{
-    cpu->stage[INT1] = cpu->stage[IQ];
-    ///}
+    }
+    else
+    {
+      cpu->stage[INT1] = cpu->stage[IQ];
+    }
 
     if (ENABLE_DEBUG_MESSAGES)
     {
@@ -524,7 +618,7 @@ int iqstage(APEX_CPU *cpu)
       // print_stage_content("IQ", stage);
     }
   }
-  
+
   return 0;
 }
 
@@ -602,77 +696,77 @@ int memfu3(APEX_CPU *cpu)
 
 int intfu1(APEX_CPU *cpu)
 {
-  
-  CPU_Stage *stage ;
+
+  CPU_Stage *stage;
   //if (!stage->busy && !stage->stalled)
   //{
 
-    /* Store */
-    if (strcmp(stage->opcode, "STORE") == 0)
-    {
-      stage->mem_address = stage->rs2_value + stage->imm;
-    }
+  /* Store */
+  if (strcmp(stage->opcode, "STORE") == 0)
+  {
+    stage->mem_address = stage->rs2_value + stage->imm;
+  }
 
-    /* STR */
-    if (strcmp(stage->opcode, "STR") == 0)
-    {
-      stage->mem_address = stage->rs2_value + stage->rs3_value;
-    }
+  /* STR */
+  if (strcmp(stage->opcode, "STR") == 0)
+  {
+    stage->mem_address = stage->rs2_value + stage->rs3_value;
+  }
 
-    /* LOAD */
-    if (strcmp(stage->opcode, "LOAD") == 0)
-    {
-      stage->mem_address = stage->rs1_value + stage->imm;
-    }
+  /* LOAD */
+  if (strcmp(stage->opcode, "LOAD") == 0)
+  {
+    stage->mem_address = stage->rs1_value + stage->imm;
+  }
 
-    /* LDR */
-    if (strcmp(stage->opcode, "LDR") == 0)
-    {
-      stage->mem_address = stage->rs1_value + stage->rs2_value;
-    }
+  /* LDR */
+  if (strcmp(stage->opcode, "LDR") == 0)
+  {
+    stage->mem_address = stage->rs1_value + stage->rs2_value;
+  }
 
-    /* MOVC */
-    if (strcmp(stage->opcode, "MOVC") == 0)
-    {
-      stage->buffer = stage->imm + 0;
-    }
+  /* MOVC */
+  if (strcmp(stage->opcode, "MOVC") == 0)
+  {
+    stage->buffer = stage->imm + 0;
+  }
 
-    /* ADD */
-    if (strcmp(stage->opcode, "ADD") == 0)
-    {
-      stage->buffer = stage->rs1_value + stage->rs2_value;
-    }
+  /* ADD */
+  if (strcmp(stage->opcode, "ADD") == 0)
+  {
+    stage->buffer = stage->rs1_value + stage->rs2_value;
+  }
 
-    /* SUB */
-    if (strcmp(stage->opcode, "SUB") == 0)
-    {
-      stage->buffer = stage->rs1_value - stage->rs2_value;
-    }
+  /* SUB */
+  if (strcmp(stage->opcode, "SUB") == 0)
+  {
+    stage->buffer = stage->rs1_value - stage->rs2_value;
+  }
 
-    /* AND */
-    if (strcmp(stage->opcode, "AND") == 0)
-    {
-      stage->buffer = stage->rs1_value & stage->rs2_value;
-    }
+  /* AND */
+  if (strcmp(stage->opcode, "AND") == 0)
+  {
+    stage->buffer = stage->rs1_value & stage->rs2_value;
+  }
 
-    /* OR */
-    if (strcmp(stage->opcode, "OR") == 0)
-    {
-      stage->buffer = stage->rs1_value | stage->rs2_value;
-    }
+  /* OR */
+  if (strcmp(stage->opcode, "OR") == 0)
+  {
+    stage->buffer = stage->rs1_value | stage->rs2_value;
+  }
 
-    /* EX-OR */
-    if (strcmp(stage->opcode, "EX-OR") == 0)
-    {
-      stage->buffer = stage->rs1_value ^ stage->rs2_value;
-    }
+  /* EX-OR */
+  if (strcmp(stage->opcode, "EX-OR") == 0)
+  {
+    stage->buffer = stage->rs1_value ^ stage->rs2_value;
+  }
 
-    cpu->stage[INT2] = cpu->stage[INT1];
-    //printf("at Int1-----");
-    if (ENABLE_DEBUG_MESSAGES)
-    {
-      print_stage_content("Int FU 1", stage);
-    }
+  cpu->stage[INT2] = cpu->stage[INT1];
+  //printf("at Int1-----");
+  if (ENABLE_DEBUG_MESSAGES)
+  {
+    print_stage_content("Int FU 1", stage);
+  }
   //}
   return 0;
 }
@@ -807,7 +901,7 @@ int APEX_cpu_run(APEX_CPU *cpu, const char *function, const char *totalcycles)
     robstage(cpu);
 
     iqstage(cpu);
-        lsqstage(cpu);
+    lsqstage(cpu);
 
     decode(cpu);
     fetch(cpu);
